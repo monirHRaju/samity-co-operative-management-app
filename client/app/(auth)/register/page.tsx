@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
-import { setCredentials } from '@/store/slices/authSlice';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,21 +19,24 @@ import {
   InputPrefix
 } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label };
-import { EyeOff, Eye } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 
-const LoginSchema = z.object({
+const RegisterSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters')
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  confirmPassword: z.string()
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"]
 });
 
-type LoginFormValues = z.infer<typeof LoginSchema>;
+type RegisterFormValues = z.infer<typeof RegisterSchema>;
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const dispatch = useDispatch();
   const { toast } = useToast();
@@ -44,47 +46,46 @@ export default function LoginPage() {
     handleSubmit,
     formState: { errors },
     reset
-  } = useForm<LoginFormValues>({
-    resolver: zodResolver(LoginSchema),
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(RegisterSchema),
     defaultValues: {
+      name: '',
       email: '',
-      password: ''
+      password: '',
+      confirmPassword: ''
     }
   });
 
-  const onSubmit = async (data: LoginFormValues) => {
+  const onSubmit = async (data: RegisterFormValues) => {
     setLoading(true);
     try {
-      const response = await fetch('/api/v1/auth/login', {
+      // Remove confirmPassword from the data
+      const { confirmPassword, ...registrationData } = data;
+      
+      const response = await fetch('/api/v1/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(registrationData),
         credentials: 'include'
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || 'Login failed');
+        throw new Error(result.message || 'Registration failed');
       }
-
-      // Set credentials in Redux store
-      dispatch(setCredentials({
-        user: result.data.user,
-        accessToken: result.data.accessToken
-      }));
 
       // Show success toast
       toast({
         title: 'Success',
-        description: 'Logged in successfully',
+        description: 'Account created successfully. Please log in.',
         variant: 'default'
       });
 
-      // Redirect to dashboard
-      router.push('/dashboard');
+      // Redirect to login
+      router.push('/login');
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -100,13 +101,27 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <Title>Sign in to your account</Title>
+          <Title>Create your account</Title>
           <CardDescription>
-            Access your dashboard and manage your cooperative society
+            Join the cooperative society and start managing your finances
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Enter your full name"
+                {...register('name')}
+                className={errors.name ? "border-destructive" : ""}
+              />
+              {errors.name && (
+                <p className="text-sm text-destructive">{errors.name.message}</p>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <Input
@@ -123,31 +138,29 @@ export default function LoginPage() {
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <InputGroup>
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  {...register('password')}
-                  className={errors.password ? "border-destructive" : ""}
-                />
-                <InputGroupAddon>
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="cursor-pointer p-1"
-                    aria-label="Toggle password visibility"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </InputGroupAddon>
-              </InputGroup>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Create a password"
+                {...register('password')}
+                className={errors.password ? "border-destructive" : ""}
+              />
               {errors.password && (
                 <p className="text-sm text-destructive">{errors.password.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="Confirm your password"
+                {...register('confirmPassword')}
+                className={errors.confirmPassword ? "border-destructive" : ""}
+              />
+              {errors.confirmPassword && (
+                <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
               )}
             </div>
 
@@ -156,15 +169,15 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/80 disabled:opacity-50"
               >
-                {loading ? 'Signing in...' : 'Sign in'}
+                {loading ? 'Creating account...' : 'Sign up'}
               </button>
           </form>
         </CardContent>
         <CardFooter className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Don't have an account?{' '}
-            <a href="/register" className="font-medium text-primary hover:underline">
-              Sign up
+            Already have an account?{' '}
+            <a href="/login" className="font-medium text-primary hover:underline">
+              Log in
             </a>
           </p>
         </CardFooter>

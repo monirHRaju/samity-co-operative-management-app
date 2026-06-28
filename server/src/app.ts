@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
+import authRoutes from './modules/auth/auth.routes';
+import usersRoutes from './modules/users/users.routes';
 import { errorHandler } from './middleware/error.middleware';
 
 const app = express();
@@ -20,11 +22,13 @@ app.get('/api/v1/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Routes will be registered here as modules are built
-// app.use('/api/v1/auth', authRouter);
-// app.use('/api/v1/users', usersRouter);
+// API routes
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/users', usersRoutes);
+// Add other module routes here as they are implemented
 // app.use('/api/v1/members', membersRouter);
-// ...
+// app.use('/api/v1/savings', savingsRouter);
+// etc.
 
 // Error handler (must be last)
 app.use(errorHandler);
