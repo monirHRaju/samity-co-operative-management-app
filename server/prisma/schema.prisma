@@ -1,0 +1,243 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──── Enums ────
+
+enum Role {
+  ADMIN
+  ACCOUNTANT
+  MEMBER
+}
+
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum AccountStatus {
+  ACTIVE
+  FROZEN
+  CLOSED
+}
+
+enum InvestmentStatus {
+  ACTIVE
+  MATURED
+  WITHDRAWN
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  INTEREST
+  FEE
+}
+
+// ──── User ────
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  password  String
+  role      Role     @default(MEMBER)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  member    Member?
+
+  @@map("users")
+}
+
+// ──── Member ────
+
+model Member {
+  id            String       @id @default(cuid())
+  userId        String       @unique @map("user_id")
+  memberNo      String       @unique @map("member_no")
+  fullName      String       @map("full_name")
+  phone         String
+  email         String?
+  address       String?
+  nid           String?      @unique
+  occupation    String?
+  monthlyIncome Int?         @map("monthly_income") // in paisa
+  nomineeName   String?      @map("nominee_name")
+  nomineePhone  String?      @map("nominee_phone")
+  photoUrl      String?      @map("photo_url")
+  status        MemberStatus @default(ACTIVE)
+  joinedAt      DateTime     @default(now()) @map("joined_at")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  savings      SavingAccount[]
+  loans        Loan[]
+  investments  Investment[]
+  journalEntries JournalEntry[]
+
+  @@map("members")
+}
+
+// ──── Saving Account ────
+
+model SavingAccount {
+  id            String        @id @default(cuid())
+  memberId      String        @map("member_id")
+  accountNo     String        @unique @map("account_no")
+  balance       Int           @default(0) // in paisa
+  goalAmount    Int?          @map("goal_amount") // in paisa
+  interestRate  Decimal       @default(5.0) @map("interest_rate")
+  status        AccountStatus @default(ACTIVE)
+  openedAt      DateTime      @default(now()) @map("opened_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  member       Member              @relation(fields: [memberId], references: [id])
+  transactions SavingTransaction[]
+  journalEntries JournalEntry[]
+
+  @@map("savings_accounts")
+}
+
+model SavingTransaction {
+  id              String          @id @default(cuid())
+  savingAccountId String          @map("saving_account_id")
+  type            TransactionType
+  amount          Int             // in paisa
+  balanceBefore   Int             @map("balance_before")
+  balanceAfter    Int             @map("balance_after")
+  reference       String?
+  description     String?
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  savingAccount SavingAccount @relation(fields: [savingAccountId], references: [id])
+
+  @@map("saving_transactions")
+}
+
+// ──── Loan ────
+
+model Loan {
+  id                String   @id @default(cuid())
+  memberId          String   @map("member_id")
+  loanNo            String   @unique @map("loan_no")
+  type              String   @default("GENERAL")
+  principalAmount   Int      @map("principal_amount") // in paisa
+  interestRate      Decimal  @map("interest_rate")
+  totalPayable      Int      @map("total_payable") // in paisa
+  paidAmount        Int      @default(0) @map("paid_amount") // in paisa
+  installmentCount  Int      @map("installment_count")
+  installmentAmount Int      @map("installment_amount") // in paisa
+  status            String   @default("PENDING")
+  appliedDate       DateTime @default(now()) @map("applied_date")
+  approvedAt        DateTime? @map("approved_at")
+  disbursedAt       DateTime? @map("disbursed_at")
+  dueDate           DateTime @map("due_date")
+  purpose           String?
+  notes             String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  member       Member           @relation(fields: [memberId], references: [id])
+  installments LoanInstallment[]
+  journalEntries JournalEntry[]
+
+  @@map("loans")
+}
+
+model LoanInstallment {
+  id            String   @id @default(cuid())
+  loanId        String   @map("loan_id")
+  installmentNo Int      @map("installment_no")
+  amount        Int      // in paisa
+  paidAmount    Int      @default(0) @map("paid_amount")
+  dueDate       DateTime @map("due_date")
+  paidDate      DateTime? @map("paid_date")
+  status        String   @default("PENDING")
+  lateFee       Int      @default(0) @map("late_fee")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  loan Loan @relation(fields: [loanId], references: [id])
+
+  @@map("loan_installments")
+}
+
+// ──── Investment ────
+
+model Investment {
+  id            String           @id @default(cuid())
+  memberId      String           @map("member_id")
+  amount        Int              // in paisa
+  returnRate    Decimal          @map("return_rate")
+  startDate     DateTime         @default(now()) @map("start_date")
+  maturityDate  DateTime?        @map("maturity_date")
+  status        InvestmentStatus @default(ACTIVE)
+  notes         String?
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@map("investments")
+}
+
+// ──── Double-Entry Ledger ────
+
+model Account {
+  id        String      @id @default(cuid())
+  code      String      @unique
+  name      String
+  type      AccountType
+  balance   Int         @default(0) // in paisa
+  isActive  Boolean     @default(true) @map("is_active")
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  journalEntries JournalEntry[]
+
+  @@map("accounts")
+}
+
+model JournalEntry {
+  id          String   @id @default(cuid())
+  voucherNo   String   @map("voucher_no")
+  date        DateTime @default(now())
+  accountId   String   @map("account_id")
+  debitAmount Int      @default(0) @map("debit_amount")
+  creditAmount Int     @default(0) @map("credit_amount")
+  description String   @default("")
+  reference   String?
+  memberId    String?  @map("member_id")
+  loanId      String?  @map("loan_id")
+  savingId    String?  @map("saving_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  account Account @relation(fields: [accountId], references: [id])
+  member  Member? @relation(fields: [memberId], references: [id])
+  loan    Loan?   @relation(fields: [loanId], references: [id])
+  saving  SavingAccount? @relation(fields: [savingId], references: [id])
+
+  @@index([accountId])
+  @@index([memberId])
+  @@index([date])
+  @@map("journal_entries")
+}
