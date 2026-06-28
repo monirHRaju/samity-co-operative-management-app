@@ -1,3 +1,6 @@
+/// Samity Cooperative Management System - Prisma Schema
+/// All monetary values stored in paisa (integer) where 100 paisa = 1 taka
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -6,8 +9,6 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
-// ──── Enums ────
 
 enum Role {
   ADMIN
@@ -18,226 +19,347 @@ enum Role {
 enum MemberStatus {
   ACTIVE
   INACTIVE
-  SUSPENDED
-  CLOSED
 }
 
-enum AccountStatus {
+enum AccountType {
+  CASH
+  BANK
+}
+
+enum AccountTransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
+enum ReferenceType {
+  SAVING
+  LOAN_DISBURSEMENT
+  LOAN_PAYMENT
+  INVESTMENT
+  EXPENSE
+  INCOME
+  TRANSFER
+  OTHER
+}
+
+enum LoanStatus {
+  PENDING
+  APPROVED
   ACTIVE
-  FROZEN
-  CLOSED
+  COMPLETED
+  DEFAULTED
+}
+
+enum InstallmentType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum LoanScheduleStatus {
+  PENDING
+  PAID
+  PARTIAL
+  OVERDUE
+}
+
+enum InvestmentType {
+  ASSET
+  FDR
+  SAVINGS_CERTIFICATE
+  OTHER
 }
 
 enum InvestmentStatus {
   ACTIVE
   MATURED
-  WITHDRAWN
+  SOLD
+  CLOSED
 }
 
-enum AccountType {
-  ASSET
-  LIABILITY
-  EQUITY
+enum InvestmentTransactionType {
+  PURCHASE
+  RETURN
+  PROFIT
+  PARTIAL_RETURN
+}
+
+enum IncomeExpenseType {
   INCOME
   EXPENSE
 }
 
-enum TransactionType {
-  DEPOSIT
-  WITHDRAWAL
-  INTEREST
-  FEE
+enum JournalEntrySourceType {
+  SAVING
+  LOAN
+  INVESTMENT
+  INCOME_EXPENSE
+  TRANSFER
+  ACCOUNT
+  OTHER
 }
 
-// ──── User ────
+enum JournalLineType {
+  DEBIT
+  CREDIT
+}
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  phone     String?
-  password  String
-  role      Role     @default(MEMBER)
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  member    Member?
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  password      String   // hashed
+  role          Role
+  isActive      Boolean  @default(true)
+  memberId      String?  @unique
+  refreshToken  String?
+  lastLogin     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  /// Relations
+  member                    Member?                  @relation("MemberUser", fields: [memberId], references: [id])
+  memberSavingsCollected    MemberSaving[]           @relation("MemberSavingCollectedBy")
+  accountTransactionsPerformed AccountTransaction[] @relation("AccountTransactionPerformedBy")
+  loansApproved             Loan[]                   @relation("LoanApprovedBy")
+  loanPaymentsCollected     LoanPayment[]            @relation("LoanPaymentCollectedBy")
+  incomeExpensesPerformed   IncomeExpense[]          @relation("IncomeExpensePerformedBy")
+  journalEntriesCreated     JournalEntry[]           @relation("JournalEntryCreatedBy")
 
   @@map("users")
 }
 
-// ──── Member ────
-
 model Member {
-  id            String       @id @default(cuid())
-  userId        String       @unique @map("user_id")
-  memberNo      String       @unique @map("member_no")
-  fullName      String       @map("full_name")
-  phone         String
-  email         String?
-  address       String?
-  nid           String?      @unique
-  occupation    String?
-  monthlyIncome Int?         @map("monthly_income") // in paisa
-  nomineeName   String?      @map("nominee_name")
-  nomineePhone  String?      @map("nominee_phone")
-  photoUrl      String?      @map("photo_url")
+  id            String   @id @default(cuid())
+  memberNo      String   @unique
+  name          String
+  fatherName    String
+  motherName    String
+  phone         String   @unique
+  address       String
+  nidNumber     String   @unique
+  photo         String?
+  nomineeName   String
+  nomineePhone  String
+  nomineeRelation String
+  joinDate      DateTime
   status        MemberStatus @default(ACTIVE)
-  joinedAt      DateTime     @default(now()) @map("joined_at")
-  createdAt     DateTime     @default(now()) @map("created_at")
-  updatedAt     DateTime     @updatedAt @map("updated_at")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  savings      SavingAccount[]
-  loans        Loan[]
-  investments  Investment[]
-  journalEntries JournalEntry[]
+  /// Relations
+  user          User?      @relation("MemberUser")
+  savings       MemberSaving[]
+  loans         Loan[]
 
   @@map("members")
 }
 
-// ──── Saving Account ────
-
-model SavingAccount {
-  id            String        @id @default(cuid())
-  memberId      String        @map("member_id")
-  accountNo     String        @unique @map("account_no")
-  balance       Int           @default(0) // in paisa
-  goalAmount    Int?          @map("goal_amount") // in paisa
-  interestRate  Decimal       @default(5.0) @map("interest_rate")
-  status        AccountStatus @default(ACTIVE)
-  openedAt      DateTime      @default(now()) @map("opened_at")
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
-
-  member       Member              @relation(fields: [memberId], references: [id])
-  transactions SavingTransaction[]
-  journalEntries JournalEntry[]
-
-  @@map("savings_accounts")
-}
-
-model SavingTransaction {
-  id              String          @id @default(cuid())
-  savingAccountId String          @map("saving_account_id")
-  type            TransactionType
-  amount          Int             // in paisa
-  balanceBefore   Int             @map("balance_before")
-  balanceAfter    Int             @map("balance_after")
-  reference       String?
-  description     String?
-  createdAt       DateTime        @default(now()) @map("created_at")
-
-  savingAccount SavingAccount @relation(fields: [savingAccountId], references: [id])
-
-  @@map("saving_transactions")
-}
-
-// ──── Loan ────
-
-model Loan {
-  id                String   @id @default(cuid())
-  memberId          String   @map("member_id")
-  loanNo            String   @unique @map("loan_no")
-  type              String   @default("GENERAL")
-  principalAmount   Int      @map("principal_amount") // in paisa
-  interestRate      Decimal  @map("interest_rate")
-  totalPayable      Int      @map("total_payable") // in paisa
-  paidAmount        Int      @default(0) @map("paid_amount") // in paisa
-  installmentCount  Int      @map("installment_count")
-  installmentAmount Int      @map("installment_amount") // in paisa
-  status            String   @default("PENDING")
-  appliedDate       DateTime @default(now()) @map("applied_date")
-  approvedAt        DateTime? @map("approved_at")
-  disbursedAt       DateTime? @map("disbursed_at")
-  dueDate           DateTime @map("due_date")
-  purpose           String?
-  notes             String?
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-
-  member       Member           @relation(fields: [memberId], references: [id])
-  installments LoanInstallment[]
-  journalEntries JournalEntry[]
-
-  @@map("loans")
-}
-
-model LoanInstallment {
+model MemberSaving {
   id            String   @id @default(cuid())
-  loanId        String   @map("loan_id")
-  installmentNo Int      @map("installment_no")
+  member        Member   @relation(fields: [memberId], references: [id])
+  memberId      String
   amount        Int      // in paisa
-  paidAmount    Int      @default(0) @map("paid_amount")
-  dueDate       DateTime @map("due_date")
-  paidDate      DateTime? @map("paid_date")
-  status        String   @default("PENDING")
-  lateFee       Int      @default(0) @map("late_fee")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  month         Int      // 1-12
+  year          Int
+  note          String?
+  collectedBy   User     @relation("MemberSavingCollectedBy", fields: [collectedById], references: [id])
+  collectedById String
+  collectedAt   DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  loan Loan @relation(fields: [loanId], references: [id])
-
-  @@map("loan_installments")
+  @@unique([memberId, month, year])
+  @@map("member_savings")
 }
-
-// ──── Investment ────
-
-model Investment {
-  id            String           @id @default(cuid())
-  memberId      String           @map("member_id")
-  amount        Int              // in paisa
-  returnRate    Decimal          @map("return_rate")
-  startDate     DateTime         @default(now()) @map("start_date")
-  maturityDate  DateTime?        @map("maturity_date")
-  status        InvestmentStatus @default(ACTIVE)
-  notes         String?
-  createdAt     DateTime         @default(now()) @map("created_at")
-  updatedAt     DateTime         @updatedAt @map("updated_at")
-
-  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
-
-  @@map("investments")
-}
-
-// ──── Double-Entry Ledger ────
 
 model Account {
-  id        String      @id @default(cuid())
-  code      String      @unique
-  name      String
-  type      AccountType
-  balance   Int         @default(0) // in paisa
-  isActive  Boolean     @default(true) @map("is_active")
-  createdAt DateTime    @default(now()) @map("created_at")
-  updatedAt DateTime    @updatedAt @map("updated_at")
+  id            String   @id @default(cuid())
+  name          String   // e.g. "Islami Bank", "Hand Cash"
+  type          AccountType
+  bankName      String?
+  accountNumber String?
+  currentBalance Int      // in paisa
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  journalEntries JournalEntry[]
+  /// Relations
+  transactions              AccountTransaction[] 
+  loansDisbursedFrom        Loan[]                @relation("LoanDisbursedFrom")
+  loanPaymentsDeposited     LoanPayment[]         @relation("LoanPaymentAccount")
+  investments               Investment[]          @relation("InvestmentAccount")
+  investmentTransactions    InvestmentTransaction[] @relation("InvestmentTransactionAccount")
+  incomeExpenses            IncomeExpense[]       @relation("IncomeExpenseAccount")
 
   @@map("accounts")
 }
 
-model JournalEntry {
+model AccountTransaction {
+  id            String   @id @default(cuid())
+  account       Account  @relation(fields: [accountId], references: [id])
+  accountId     String
+  type          AccountTransactionType
+  amount        Int      // in paisa
+  balanceAfter  Int      // in paisa
+  description   String?
+  referenceType ReferenceType?
+  referenceId   String?
+  performedBy   User     @relation("AccountTransactionPerformedBy", fields: [performedById], references: [id])
+  performedById String
+  createdAt     DateTime @default(now())
+
+  @@map("account_transactions")
+}
+
+model Loan {
+  id              String   @id @default(cuid())
+  loanNo          String   @unique
+  member          Member   @relation(fields: [memberId], references: [id])
+  memberId        String
+  amount          Int      // in paisa (principal)
+  profitRate      Decimal  // e.g. 10.5 for 10.5%
+  profitAmount    Int      // in paisa (total profit)
+  totalPayable    Int      // in paisa (principal + profit)
+  duration        Int      // number of installments
+  installmentType InstallmentType
+  installmentAmount Int   // in paisa
+  disbursedAt     DateTime?
+  disbursedFrom   Account? @relation("LoanDisbursedFrom", fields: [disbursedFromId], references: [id])
+  disbursedFromId String?
+  status          LoanStatus
+  approvedBy      User?    @relation("LoanApprovedBy", fields: [approvedById], references: [id])
+  approvedById    String?
+  note            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  /// Relations
+  schedules     LoanSchedule[]
+  payments      LoanPayment[]
+
+  @@map("loans")
+}
+
+model LoanSchedule {
   id          String   @id @default(cuid())
-  voucherNo   String   @map("voucher_no")
-  date        DateTime @default(now())
-  accountId   String   @map("account_id")
-  debitAmount Int      @default(0) @map("debit_amount")
-  creditAmount Int     @default(0) @map("credit_amount")
-  description String   @default("")
-  reference   String?
-  memberId    String?  @map("member_id")
-  loanId      String?  @map("loan_id")
-  savingId    String?  @map("saving_id")
-  createdAt   DateTime @default(now()) @map("created_at")
+  loan        Loan     @relation(fields: [loanId], references: [id])
+  loanId      String
+  installmentNo Int
+  dueDate     DateTime
+  dueAmount   Int      // in paisa
+  status      LoanScheduleStatus
+  createdAt   DateTime @default(now())
 
-  account Account @relation(fields: [accountId], references: [id])
-  member  Member? @relation(fields: [memberId], references: [id])
-  loan    Loan?   @relation(fields: [loanId], references: [id])
-  saving  SavingAccount? @relation(fields: [savingId], references: [id])
+  /// Relations
+  loanPayments LoanPayment[] @relation("LoanPaymentSchedule")
 
-  @@index([accountId])
-  @@index([memberId])
-  @@index([date])
+  @@map("loan_schedules")
+}
+
+model LoanPayment {
+  id            String   @id @default(cuid())
+  loan          Loan     @relation(fields: [loanId], references: [id])
+  loanId        String
+  schedule      LoanSchedule? @relation("LoanPaymentSchedule", fields: [scheduleId], references: [id])
+  scheduleId    String?
+  amount        Int      // in paisa
+  paymentDate   DateTime
+  collectedBy   User     @relation("LoanPaymentCollectedBy", fields: [collectedById], references: [id])
+  collectedById String
+  accountId     String   // account where money is deposited
+  account       Account  @relation("LoanPaymentAccount", fields: [accountId], references: [id])
+  note          String?
+  createdAt     DateTime @default(now())
+
+  @@map("loan_payments")
+}
+
+model Investment {
+  id            String   @id @default(cuid())
+  investmentNo  String   @unique
+  type          InvestmentType
+  title         String
+  description   String?
+  purchaseAmount Int      // in paisa
+  purchaseDate  DateTime
+  maturityDate  DateTime?
+  expectedReturn Int?     // in paisa
+  actualReturn  Int?     // in paisa
+  status        InvestmentStatus
+  accountId     String   // account from which investment was made
+  account       Account  @relation("InvestmentAccount", fields: [accountId], references: [id])
+  note          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  /// Relations
+  transactions  InvestmentTransaction[]
+
+  @@map("investments")
+}
+
+model InvestmentTransaction {
+  id            String   @id @default(cuid())
+  investment    Investment @relation(fields: [investmentId], references: [id])
+  investmentId  String
+  type          InvestmentTransactionType
+  amount        Int      // in paisa
+  date          DateTime
+  accountId     String   // account involved in transaction (where money came from/goes)
+  account       Account  @relation("InvestmentTransactionAccount", fields: [accountId], references: [id])
+  note          String?
+  createdAt     DateTime @default(now())
+
+  @@map("investment_transactions")
+}
+
+model IncomeExpense {
+  id            String   @id @default(cuid())
+  type          IncomeExpenseType
+  category      String   // e.g. "Office Rent", "Loan Profit"
+  amount        Int      // in paisa
+  date          DateTime
+  accountId     String   // account involved
+  account       Account  @relation("IncomeExpenseAccount", fields: [accountId], references: [id])
+  description   String?
+  referenceId   String?  // optional reference to other entities (e.g. loanId, investmentId)
+  performedBy   User     @relation("IncomeExpensePerformedBy", fields: [performedById], references: [id])
+  performedById String
+  createdAt     DateTime @default(now())
+
+  @@map("income_expenses")
+}
+
+model JournalEntry {
+  id            String   @id @default(cuid())
+  entryNo       String   @unique
+  date          DateTime
+  description   String
+  sourceType    JournalEntrySourceType
+  sourceId      String?
+  createdBy     User     @relation("JournalEntryCreatedBy", fields: [createdById], references: [id])
+  createdById   String
+  createdAt     DateTime @default(now())
+
+  /// Relations
+  lines         JournalLine[]
+
   @@map("journal_entries")
+}
+
+model JournalLine {
+  id            String   @id @default(cuid())
+  journalEntry  JournalEntry @relation(fields: [journalEntryId], references: [id])
+  journalEntryId String
+  accountCode   String   // e.g. "1000" for Cash, "2000" for Bank, etc.
+  accountName   String
+  type          JournalLineType
+  amount        Int      // in paisa
+  createdAt     DateTime @default(now())
+
+  @@map("journal_lines")
 }

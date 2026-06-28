@@ -43,3 +43,26 @@ samity-app/
 ├── server/          ← Express.js + Prisma backend
 └── package.json     ← Root workspace scripts
 ```
+
+## Chart of Accounts Reference
+
+| Account Code | Account Name        | Type       |
+|--------------|---------------------|------------|
+| 1000         | Cash In Hand        | Asset      |
+| 1100         | Bank Account        | Asset      |
+| 1200         | Loan Receivable     | Asset      |
+| 1300         | Investments         | Asset      |
+| 1400         | Other Assets        | Asset      |
+| 2000         | Accounts Payable    | Liability  |
+| 2100         | Savings Liability   | Liability  |
+| 2200         | Loan Liability      | Liability  |
+| 2300         | Other Liabilities   | Liability  |
+| 3000         | Share Capital       | Equity     |
+| 3100         | Retained Earnings   | Equity     |
+| 4000         | Interest Income     | Revenue    |
+| 4100         | Fee Income          | Revenue    |
+| 5000         | Interest Expense    | Expense    |
+| 5100         | Operational Expense | Expense    |
+| 5200         | Provision for Loan Losses | Expense |
+
+*Note: Adjust codes and names as per your country's accounting standards.*
