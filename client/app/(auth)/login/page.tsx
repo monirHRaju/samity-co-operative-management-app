@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDispatch } from 'react-redux';
+import { useAppDispatch } from '@/store';
 import { setCredentials } from '@/store/slices/authSlice';
+import api from '@/lib/api';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29,8 +30,12 @@ type LoginFormValues = z.infer<typeof LoginSchema>;
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error" | null; text: string }>({
+    type: null,
+    text: "",
+  });
   const router = useRouter();
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   
   const {
     register,
@@ -47,34 +52,35 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormValues) => {
     setLoading(true);
+    setStatusMessage({ type: null, text: "" });
     try {
-      const response = await fetch('/api/v1/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data),
-        credentials: 'include'
-      });
+      const response = await api.post('/auth/login', data);
+      const authData = response.data?.data;
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Login failed');
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || 'Login failed');
       }
 
-      // Set credentials in Redux store
+      if (!authData?.accessToken || !authData?.user) {
+        throw new Error('Invalid authentication response');
+      }
+
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('accessToken', authData.accessToken);
+      }
+
       dispatch(setCredentials({
-        user: result.data.user,
-        accessToken: result.data.accessToken
+        user: authData.user,
+        accessToken: authData.accessToken,
       }));
 
-      console.info('Logged in successfully');
+      setStatusMessage({ type: "success", text: "Signed in successfully. Redirecting..." });
 
       // Redirect to dashboard
       router.push('/dashboard');
     } catch (error: any) {
-      console.error(error.message || 'Something went wrong');
+      const message = error?.response?.data?.message || error?.message || "Sign in failed. Please try again.";
+      setStatusMessage({ type: "error", text: message });
     } finally {
       setLoading(false);
     }
@@ -132,6 +138,15 @@ export default function LoginPage() {
                 <p className="text-sm text-destructive">{errors.password.message}</p>
               )}
             </div>
+
+            {statusMessage.text ? (
+              <div
+                role="alert"
+                className={`rounded-md border px-3 py-2 text-sm ${statusMessage.type === "error" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700"}`}
+              >
+                {statusMessage.text}
+              </div>
+            ) : null}
 
             <button
               type="submit"

@@ -23,7 +23,7 @@ export const loginUser = createAsyncThunk(
   async (payload: LoginPayload, { rejectWithValue }) => {
     try {
       const { data } = await api.post("/auth/login", payload);
-      return data.data as User;
+      return data.data as { user: User; accessToken: string };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || "Login failed");
     }
@@ -62,6 +62,17 @@ const authSlice = createSlice({
       state.user = action.payload.user;
       state.accessToken = action.payload.accessToken ?? null;
       state.isAuthenticated = !!action.payload.user;
+
+      if (typeof window !== "undefined") {
+        if (action.payload.accessToken) {
+          window.localStorage.setItem(
+            "accessToken",
+            action.payload.accessToken,
+          );
+        } else {
+          window.localStorage.removeItem("accessToken");
+        }
+      }
     },
     setUser(state, action: PayloadAction<User | null>) {
       state.user = action.payload;
@@ -77,7 +88,8 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload;
+        state.user = action.payload.user;
+        state.accessToken = action.payload.accessToken;
         state.isAuthenticated = true;
       })
       .addCase(loginUser.rejected, (state, action) => {
@@ -87,7 +99,12 @@ const authSlice = createSlice({
       // Logout
       .addCase(logoutUser.fulfilled, (state) => {
         state.user = null;
+        state.accessToken = null;
         state.isAuthenticated = false;
+
+        if (typeof window !== "undefined") {
+          window.localStorage.removeItem("accessToken");
+        }
       })
       // Fetch current user
       .addCase(fetchCurrentUser.pending, (state) => {

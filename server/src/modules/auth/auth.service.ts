@@ -1,12 +1,13 @@
-import { prisma } from '@/utils/prisma';
-import * as bcrypt from 'bcryptjs';
-import { sign, verify, JwtPayload } from 'jsonwebtoken';
-import { Request } from 'express';
+import { prisma } from "@/utils/prisma";
+import * as bcrypt from "bcryptjs";
+import { sign, verify, JwtPayload } from "jsonwebtoken";
+import { Request } from "express";
 
-const ACCESS_TOKEN_SECRET = process.env.JWT_ACCESS_SECRET || 'access-secret';
-const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh-secret';
-const ACCESS_TOKEN_EXPIRY = '15m';
-const REFRESH_TOKEN_EXPIRY = '7d';
+const ACCESS_TOKEN_SECRET =
+  process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || "access-secret";
+const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET || "refresh-secret";
+const ACCESS_TOKEN_EXPIRY = "15m";
+const REFRESH_TOKEN_EXPIRY = "7d";
 
 export class AuthService {
   /**
@@ -16,7 +17,7 @@ export class AuthService {
     name: string;
     email: string;
     password: string;
-    role: 'ADMIN' | 'ACCOUNTANT' | 'MEMBER';
+    role: "ADMIN" | "ACCOUNTANT" | "MEMBER";
   }) {
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -24,7 +25,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new Error('User already exists with this email');
+      throw new Error("User already exists with this email");
     }
 
     // Hash password
@@ -55,13 +56,13 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new Error('Invalid credentials');
+      throw new Error("Invalid credentials");
     }
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      throw new Error('Invalid credentials');
+      throw new Error("Invalid credentials");
     }
 
     // Generate tokens
@@ -97,7 +98,7 @@ export class AuthService {
     try {
       payload = verify(refreshToken, REFRESH_TOKEN_SECRET) as JwtPayload;
     } catch (error) {
-      throw new Error('Invalid refresh token');
+      throw new Error("Invalid refresh token");
     }
 
     // Find user by id from token
@@ -106,13 +107,13 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
 
     // Compare stored refresh token hash
-    const isValid = await bcrypt.compare(refreshToken, user.refreshToken || '');
+    const isValid = await bcrypt.compare(refreshToken, user.refreshToken || "");
     if (!isValid) {
-      throw new Error('Invalid refresh token');
+      throw new Error("Invalid refresh token");
     }
 
     // Generate new access token
@@ -156,7 +157,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
 
     return user;
@@ -173,7 +174,7 @@ export class AuthService {
         role: user.role,
       },
       ACCESS_TOKEN_SECRET,
-      { expiresIn: ACCESS_TOKEN_EXPIRY }
+      { expiresIn: ACCESS_TOKEN_EXPIRY },
     );
   }
 
@@ -187,7 +188,7 @@ export class AuthService {
         jti: Math.random().toString(36).substring(2),
       },
       REFRESH_TOKEN_SECRET,
-      { expiresIn: REFRESH_TOKEN_EXPIRY }
+      { expiresIn: REFRESH_TOKEN_EXPIRY },
     );
   }
 }

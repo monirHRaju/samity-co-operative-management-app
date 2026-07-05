@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDispatch } from 'react-redux';
 import { useForm } from 'react-hook-form';
+import api from '@/lib/api';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { 
@@ -31,8 +31,11 @@ type RegisterFormValues = z.infer<typeof RegisterSchema>;
 
 export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error" | null; text: string }>({
+    type: null,
+    text: "",
+  });
   const router = useRouter();
-  const dispatch = useDispatch();
   
   const {
     register,
@@ -51,31 +54,28 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterFormValues) => {
     setLoading(true);
+    setStatusMessage({ type: null, text: "" });
     try {
-      // Remove confirmPassword from the data
+      // Remove confirmPassword from the data and supply a default role for the backend
       const { confirmPassword, ...registrationData } = data;
+      const payload = {
+        ...registrationData,
+        role: 'MEMBER' as const,
+      };
       
-      const response = await fetch('/api/v1/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(registrationData),
-        credentials: 'include'
-      });
+      const response = await api.post('/auth/register', payload);
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Registration failed');
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || 'Registration failed');
       }
 
-      console.info('Account created successfully. Please log in.');
+      setStatusMessage({ type: "success", text: "Account created successfully. Redirecting to login..." });
 
       // Redirect to login
       router.push('/login');
     } catch (error: any) {
-      console.error(error.message || 'Something went wrong');
+      const message = error?.response?.data?.message || error?.message || "Sign up failed. Please try again.";
+      setStatusMessage({ type: "error", text: message });
     } finally {
       setLoading(false);
     }
@@ -147,6 +147,15 @@ export default function RegisterPage() {
                 <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
               )}
             </div>
+
+            {statusMessage.text ? (
+              <div
+                role="alert"
+                className={`rounded-md border px-3 py-2 text-sm ${statusMessage.type === "error" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700"}`}
+              >
+                {statusMessage.text}
+              </div>
+            ) : null}
 
             <button
               type="submit"
