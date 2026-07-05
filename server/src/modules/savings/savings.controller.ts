@@ -1,6 +1,6 @@
-import { Request, Response } from 'express';
-import { SavingsService } from './savings.service';
-import { sendSuccess, sendError } from '@/utils/response.helper';
+import { Request, Response } from "express";
+import { SavingsService } from "./savings.service";
+import { sendSuccess, sendError } from "@/utils/response.helper";
 
 const savingsService = new SavingsService();
 
@@ -19,9 +19,15 @@ export class SavingsController {
         page: page ? parseInt(String(page)) : undefined,
         limit: limit ? parseInt(String(limit)) : undefined,
       });
-      return sendSuccess(res, result.data, 'Savings retrieved', 200, result.meta);
+      return sendSuccess(
+        res,
+        result.data,
+        "Savings retrieved",
+        200,
+        result.meta,
+      );
     } catch (error: any) {
-      return sendError(res, error.message || 'Failed to fetch savings', 500);
+      return sendError(res, error.message || "Failed to fetch savings", 500);
     }
   }
 
@@ -32,9 +38,9 @@ export class SavingsController {
   async create(req: Request, res: Response) {
     try {
       const result = await savingsService.createSavings(req.body);
-      return sendSuccess(res, result, 'Savings recorded', 201);
+      return sendSuccess(res, result, "Savings recorded", 201);
     } catch (error: any) {
-      return sendError(res, error.message || 'Failed to record savings', 400);
+      return sendError(res, error.message || "Failed to record savings", 400);
     }
   }
 
@@ -46,12 +52,12 @@ export class SavingsController {
     try {
       const { id } = req.params;
       const updated = await savingsService.updateSavings(id, req.body);
-      return sendSuccess(res, updated, 'Savings updated');
+      return sendSuccess(res, updated, "Savings updated");
     } catch (error: any) {
-      if (error.message === 'Savings entry not found') {
+      if (error.message === "Savings entry not found") {
         return sendError(res, error.message, 404);
       }
-      return sendError(res, error.message || 'Failed to update savings', 400);
+      return sendError(res, error.message || "Failed to update savings", 400);
     }
   }
 
@@ -63,12 +69,12 @@ export class SavingsController {
     try {
       const { id } = req.params;
       await savingsService.deleteSavings(id);
-      return sendSuccess(res, null, 'Savings deleted and effects reversed');
+      return sendSuccess(res, null, "Savings deleted and effects reversed");
     } catch (error: any) {
-      if (error.message === 'Savings entry not found') {
+      if (error.message === "Savings entry not found") {
         return sendError(res, error.message, 404);
       }
-      return sendError(res, error.message || 'Failed to delete savings', 400);
+      return sendError(res, error.message || "Failed to delete savings", 400);
     }
   }
 
@@ -81,10 +87,14 @@ export class SavingsController {
       const { year } = req.query;
       const yearNum = year ? parseInt(String(year)) : undefined;
       // TODO: Implement aggregation logic
-      const summary = []; // [{ month: number, total: number }]
-      return sendSuccess(res, summary, 'Savings summary retrieved');
+      const summary: Array<{ month: number; total: number }> = []; // [{ month: number, total: number }]
+      return sendSuccess(res, summary, "Savings summary retrieved");
     } catch (error: any) {
-      return sendError(res, error.message || 'Failed to fetch savings summary', 500);
+      return sendError(
+        res,
+        error.message || "Failed to fetch savings summary",
+        500,
+      );
     }
   }
 
@@ -100,9 +110,19 @@ export class SavingsController {
         page: 1,
         limit: 1000, // fetch all (or implement proper pagination)
       });
-      return sendSuccess(res, result.data, 'Member savings retrieved', 200, result.meta);
+      return sendSuccess(
+        res,
+        result.data,
+        "Member savings retrieved",
+        200,
+        result.meta,
+      );
     } catch (error: any) {
-      return sendError(res, error.message || 'Failed to fetch member savings', 500);
+      return sendError(
+        res,
+        error.message || "Failed to fetch member savings",
+        500,
+      );
     }
   }
 }

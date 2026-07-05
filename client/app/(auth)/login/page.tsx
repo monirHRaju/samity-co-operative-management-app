@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
@@ -11,19 +13,11 @@ import {
   CardDescription, 
   CardFooter, 
   CardHeader, 
-  Title 
+  CardTitle 
 } from '@/components/ui/card';
-import { 
-  Input, 
-  InputGroupAddon,
-  InputGroup,
-  InputPrefix
-} from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label };
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { EyeOff, Eye } from 'lucide-react';
-import { Toaster } from '@/components/ui/toaster';
-import { useToast } from '@/hooks/use-toast';
 
 const LoginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -37,7 +31,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const dispatch = useDispatch();
-  const { toast } = useToast();
   
   const {
     register,
@@ -76,21 +69,12 @@ export default function LoginPage() {
         accessToken: result.data.accessToken
       }));
 
-      // Show success toast
-      toast({
-        title: 'Success',
-        description: 'Logged in successfully',
-        variant: 'default'
-      });
+      console.info('Logged in successfully');
 
       // Redirect to dashboard
       router.push('/dashboard');
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Something went wrong',
-        variant: 'destructive'
-      });
+      console.error(error.message || 'Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -100,7 +84,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <Title>Sign in to your account</Title>
+          <CardTitle>Sign in to your account</CardTitle>
           <CardDescription>
             Access your dashboard and manage your cooperative society
           </CardDescription>
@@ -123,29 +107,27 @@ export default function LoginPage() {
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <InputGroup>
+              <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Enter your password"
                   {...register('password')}
-                  className={errors.password ? "border-destructive" : ""}
+                  className={errors.password ? "border-destructive pr-10" : "pr-10"}
                 />
-                <InputGroupAddon>
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="cursor-pointer p-1"
-                    aria-label="Toggle password visibility"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </InputGroupAddon>
-              </InputGroup>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-2 flex items-center text-muted-foreground"
+                  aria-label="Toggle password visibility"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
               {errors.password && (
                 <p className="text-sm text-destructive">{errors.password.message}</p>
               )}
@@ -169,7 +151,6 @@ export default function LoginPage() {
           </p>
         </CardFooter>
       </Card>
-      <Toaster />
     </div>
   );
 }

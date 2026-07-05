@@ -4,6 +4,7 @@ import type { User, LoginPayload } from "@/types";
 
 interface AuthState {
   user: User | null;
+  accessToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -11,6 +12,7 @@ interface AuthState {
 
 const initialState: AuthState = {
   user: null,
+  accessToken: null,
   isAuthenticated: false,
   isLoading: false,
   error: null,
@@ -23,19 +25,14 @@ export const loginUser = createAsyncThunk(
       const { data } = await api.post("/auth/login", payload);
       return data.data as User;
     } catch (error: any) {
-      return rejectWithValue(
-        error.response?.data?.message || "Login failed"
-      );
+      return rejectWithValue(error.response?.data?.message || "Login failed");
     }
-  }
+  },
 );
 
-export const logoutUser = createAsyncThunk(
-  "auth/logout",
-  async () => {
-    await api.post("/auth/logout");
-  }
-);
+export const logoutUser = createAsyncThunk("auth/logout", async () => {
+  await api.post("/auth/logout");
+});
 
 export const fetchCurrentUser = createAsyncThunk(
   "auth/fetchCurrentUser",
@@ -45,10 +42,10 @@ export const fetchCurrentUser = createAsyncThunk(
       return data.data as User;
     } catch (error: any) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch user"
+        error.response?.data?.message || "Failed to fetch user",
       );
     }
-  }
+  },
 );
 
 const authSlice = createSlice({
@@ -57,6 +54,14 @@ const authSlice = createSlice({
   reducers: {
     clearError(state) {
       state.error = null;
+    },
+    setCredentials(
+      state,
+      action: PayloadAction<{ user: User | null; accessToken?: string | null }>,
+    ) {
+      state.user = action.payload.user;
+      state.accessToken = action.payload.accessToken ?? null;
+      state.isAuthenticated = !!action.payload.user;
     },
     setUser(state, action: PayloadAction<User | null>) {
       state.user = action.payload;
@@ -101,5 +106,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, setUser } = authSlice.actions;
+export const { clearError, setCredentials, setUser } = authSlice.actions;
 export default authSlice.reducer;

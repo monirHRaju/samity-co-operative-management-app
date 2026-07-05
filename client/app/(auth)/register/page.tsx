@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
@@ -10,18 +12,10 @@ import {
   CardDescription, 
   CardFooter, 
   CardHeader, 
-  Title 
+  CardTitle 
 } from '@/components/ui/card';
-import { 
-  Input, 
-  InputGroupAddon,
-  InputGroup,
-  InputPrefix
-} from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Toaster } from '@/components/ui/toaster';
-import { useToast } from '@/hooks/use-toast';
 
 const RegisterSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -39,7 +33,6 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const dispatch = useDispatch();
-  const { toast } = useToast();
   
   const {
     register,
@@ -77,21 +70,12 @@ export default function RegisterPage() {
         throw new Error(result.message || 'Registration failed');
       }
 
-      // Show success toast
-      toast({
-        title: 'Success',
-        description: 'Account created successfully. Please log in.',
-        variant: 'default'
-      });
+      console.info('Account created successfully. Please log in.');
 
       // Redirect to login
       router.push('/login');
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Something went wrong',
-        variant: 'destructive'
-      });
+      console.error(error.message || 'Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -101,7 +85,7 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <Title>Create your account</Title>
+          <CardTitle>Create your account</CardTitle>
           <CardDescription>
             Join the cooperative society and start managing your finances
           </CardDescription>
@@ -182,7 +166,6 @@ export default function RegisterPage() {
           </p>
         </CardFooter>
       </Card>
-      <Toaster />
     </div>
   );
 }

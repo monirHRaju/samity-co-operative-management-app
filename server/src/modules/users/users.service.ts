@@ -1,6 +1,6 @@
-import { prisma } from '@/utils/prisma';
-import * as bcrypt from 'bcryptjs';
-import { UserRole } from '@prisma/client';
+import { prisma } from "@/utils/prisma";
+import * as bcrypt from "bcryptjs";
+import { Role } from "@prisma/client";
 
 export class UsersService {
   /**
@@ -19,7 +19,7 @@ export class UsersService {
         createdAt: true,
         updatedAt: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -30,7 +30,7 @@ export class UsersService {
     name: string;
     email: string;
     password: string;
-    role: UserRole;
+    role: Role;
     isActive?: boolean;
   }) {
     // Check if user already exists
@@ -38,7 +38,7 @@ export class UsersService {
       where: { email: data.email },
     });
     if (existing) {
-      throw new Error('User already exists with this email');
+      throw new Error("User already exists with this email");
     }
 
     // Hash password
@@ -71,17 +71,20 @@ export class UsersService {
   /**
    * Update user (excluding password and email)
    */
-  async update(id: string, data: {
-    name?: string;
-    role?: UserRole;
-    isActive?: boolean;
-  }) {
+  async update(
+    id: string,
+    data: {
+      name?: string;
+      role?: Role;
+      isActive?: boolean;
+    },
+  ) {
     // Ensure user exists
     const existing = await prisma.user.findUnique({
       where: { id },
     });
     if (!existing) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
 
     // Update user
@@ -115,7 +118,7 @@ export class UsersService {
       where: { id },
     });
     if (!user) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
 
     const updated = await prisma.user.update({

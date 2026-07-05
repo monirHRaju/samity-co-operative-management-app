@@ -1,22 +1,33 @@
-import { prisma } from '@/utils/prisma';
-import { Prisma, MemberStatus, MemberSaving } from '@prisma/client';
-import { z } from 'zod';
+import { prisma } from "@/utils/prisma";
+import { Prisma, MemberStatus, MemberSaving } from "@prisma/client";
+import { z } from "zod";
 
 /**
  * Validation schema for creating a member
  */
 const createMemberSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().min(1, "Name is required"),
   fatherName: z.string().min(1, "Father's name is required"),
-  phone: z.string().min(10, 'Phone number is required').regex(/^[0-9]+$/, 'Phone must contain only digits'),
-  address: z.string().min(1, 'Address is required'),
-  nidNumber: z.string().min(1, 'NID number is required').regex(/^[0-9]+$/, 'NID must contain only digits'),
-  joinDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'Invalid join date' }),
-  nomineeName: z.string().min(1, 'Nominee name is required'),
-  nomineePhone: z.string().min(10, "Nominee's phone is required").regex(/^[0-9]+$/, 'Phone must contain only digits'),
-  nomineeRelation: z.string().min(1, 'Nominee relation is required'),
+  phone: z
+    .string()
+    .min(10, "Phone number is required")
+    .regex(/^[0-9]+$/, "Phone must contain only digits"),
+  address: z.string().min(1, "Address is required"),
+  nidNumber: z
+    .string()
+    .min(1, "NID number is required")
+    .regex(/^[0-9]+$/, "NID must contain only digits"),
+  joinDate: z
+    .string()
+    .refine((val) => !isNaN(Date.parse(val)), { message: "Invalid join date" }),
+  nomineeName: z.string().min(1, "Nominee name is required"),
+  nomineePhone: z
+    .string()
+    .min(10, "Nominee's phone is required")
+    .regex(/^[0-9]+$/, "Phone must contain only digits"),
+  nomineeRelation: z.string().min(1, "Nominee relation is required"),
   motherName: z.string().optional(),
-  photo: z.string().url('Photo must be a valid URL').optional(),
+  photo: z.string().url("Photo must be a valid URL").optional(),
 });
 
 /**
@@ -31,24 +42,24 @@ export class MembersService {
   private async generateMemberNo(): Promise<string> {
     // Find the highest existing member number
     const lastMember = await prisma.member.findFirst({
-      orderBy: { memberNo: 'desc' },
+      orderBy: { memberNo: "desc" },
       select: { memberNo: true },
     });
 
     if (!lastMember) {
-      return 'M-0001';
+      return "M-0001";
     }
 
     // Extract numeric part from format M-0001
     const match = lastMember.memberNo.match(/M-(\d+)/);
     if (!match) {
       // Fallback: start from 0001
-      return 'M-0001';
+      return "M-0001";
     }
 
     const num = parseInt(match[1], 10) + 1;
     // Pad with zeros to length 4
-    const padded = String(num).padStart(4, '0');
+    const padded = String(num).padStart(4, "0");
     return `M-${padded}`;
   }
 
@@ -71,7 +82,7 @@ export class MembersService {
       const searchTerm = query.search.trim();
       if (searchTerm) {
         where.OR = [
-          { name: { contains: searchTerm, mode: 'insensitive' } },
+          { name: { contains: searchTerm, mode: "insensitive" } },
           { phone: { contains: searchTerm } },
           { nidNumber: { contains: searchTerm } },
           { memberNo: { contains: searchTerm } },
@@ -88,7 +99,7 @@ export class MembersService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         select: {
           id: true,
           memberNo: true,
@@ -150,13 +161,13 @@ export class MembersService {
           select: {
             amount: true,
           },
-          orderBy: [{ year: 'desc' }, { month: 'desc' }],
+          orderBy: [{ year: "desc" }, { month: "desc" }],
         },
       },
     });
 
     if (!member) {
-      throw new Error('Member not found');
+      throw new Error("Member not found");
     }
 
     // Calculate total savings
@@ -176,21 +187,23 @@ export class MembersService {
     // Validate input
     const result = createMemberSchema.safeParse(data);
     if (!result.success) {
-      throw new Error(result.error.errors.map((e) => e.message).join(', '));
+      throw new Error(result.error.errors.map((e) => e.message).join(", "));
     }
     const validatedData = result.data;
 
     // Check uniqueness of phone and nid
     const [phoneExists, nidExists] = await Promise.all([
       prisma.member.findUnique({ where: { phone: validatedData.phone } }),
-      prisma.member.findUnique({ where: { nidNumber: validatedData.nidNumber } }),
+      prisma.member.findUnique({
+        where: { nidNumber: validatedData.nidNumber },
+      }),
     ]);
 
     if (phoneExists) {
-      throw new Error('Phone number already exists');
+      throw new Error("Phone number already exists");
     }
     if (nidExists) {
-      throw new Error('NID number already exists');
+      throw new Error("NID number already exists");
     }
 
     // Generate member number
@@ -205,11 +218,11 @@ export class MembersService {
         memberNo,
         name: validatedData.name,
         fatherName: validatedData.fatherName,
-        motherName: validatedData.motherName ?? null,
+        motherName: validatedData.motherName ?? "",
         phone: validatedData.phone,
         address: validatedData.address,
         nidNumber: validatedData.nidNumber,
-        photo: validatedData.photo ?? null,
+        photo: validatedData.photo ?? "",
         joinDate,
         nomineeName: validatedData.nomineeName,
         nomineePhone: validatedData.nomineePhone,
@@ -246,13 +259,13 @@ export class MembersService {
     // Check if member exists
     const existing = await prisma.member.findUnique({ where: { id } });
     if (!existing) {
-      throw new Error('Member not found');
+      throw new Error("Member not found");
     }
 
     // Validate input (partial)
     const result = updateMemberSchema.safeParse(data);
     if (!result.success) {
-      throw new Error(result.error.errors.map((e) => e.message).join(', '));
+      throw new Error(result.error.errors.map((e) => e.message).join(", "));
     }
     const validatedData = result.data;
 
@@ -265,7 +278,7 @@ export class MembersService {
         },
       });
       if (phoneExists) {
-        throw new Error('Phone number already exists');
+        throw new Error("Phone number already exists");
       }
     }
     if (validatedData.nidNumber) {
@@ -276,7 +289,7 @@ export class MembersService {
         },
       });
       if (nidExists) {
-        throw new Error('NID number already exists');
+        throw new Error("NID number already exists");
       }
     }
 
@@ -327,13 +340,16 @@ export class MembersService {
   async toggleStatus(id: string) {
     const member = await prisma.member.findUnique({ where: { id } });
     if (!member) {
-      throw new Error('Member not found');
+      throw new Error("Member not found");
     }
 
     const updated = await prisma.member.update({
       where: { id },
       data: {
-        status: member.status === MemberStatus.ACTIVE ? MemberStatus.INACTIVE : MemberStatus.ACTIVE,
+        status:
+          member.status === MemberStatus.ACTIVE
+            ? MemberStatus.INACTIVE
+            : MemberStatus.ACTIVE,
       },
       select: {
         id: true,
@@ -355,13 +371,13 @@ export class MembersService {
       where: { id },
       include: {
         savings: {
-          orderBy: [{ year: 'desc' }, { month: 'desc' }],
+          orderBy: [{ year: "desc" }, { month: "desc" }],
         },
       },
     });
 
     if (!member) {
-      throw new Error('Member not found');
+      throw new Error("Member not found");
     }
 
     // Calculate totals
